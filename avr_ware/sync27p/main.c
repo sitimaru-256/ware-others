@@ -1,7 +1,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 volatile float frq;
-volatile float basfrq = 10.0;
+volatile float basfrq = 2.0;
 float offset;
 float ratio;
 float dutyu;
@@ -19,7 +19,6 @@ ISR(TCB0_INT_vect){
 
 ISR(TCB1_INT_vect){
 	TCB1.INTFLAGS = 1;
-	basfrq = basfrq + 0.0005;
 }
 
 ISR(TCE0_OVF_vect){
@@ -35,7 +34,7 @@ ISR(TCE0_OVF_vect){
 	TCE0.CMP1 = (unsigned int)(2500000 / frq * dutyv);
 	TCE0.CMP2 = (unsigned int)(2500000 / frq * dutyw);
 	i++;
-	if(i>26){i = 0;}
+	if(i>53){i = 0;}
 }
 
 void clock_init(void){
