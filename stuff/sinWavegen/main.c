@@ -27,7 +27,7 @@ int main(void) {
         est = (uint16_t)((est + 1.0) * max * 0.5);
         fprintf(file, "%g,", est);
     }
-    rad = PI2 * (float)(length-1) / (float)length;
+    rad = PI2 * (float)(length-1) / (float)length + phase;
     est = sin(rad);
     est = (uint16_t)((est + 1.0) * max * 0.5);
     fprintf(file, "%g",est);
