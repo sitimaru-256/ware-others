@@ -324,6 +324,14 @@ int main(void)
     indicate2(3);
     indicate3(1);
     indicate4(4);
+    int innr = 0;
 
-    while (1){}
+    while (1){
+        innr +=7;
+        indicate1(innr/1000);
+        indicate2((innr/100)%10);
+        indicate3((innr/10)%10);
+        indicate4(innr%10);
+        _delay_ms(200);
+    }
 }
