@@ -1,8 +1,7 @@
 #define F_CPU 20000000UL
-
 #include <avr/io.h>
-//#include <avr/cpufunc.h>
 #include <util/delay.h>
+int column = 0;
 
 uint8_t figure[10][80] = {
     {
@@ -66,20 +65,24 @@ uint8_t figure[10][80] = {
         0, 0, 240, 240, 240, 240, 240, 240, 240, 248, 248, 126, 63, 31, 15, 3, 0, 0, 0
     }
 };
-uint8_t _nH[160] = {0, 0, 0, 128, 128, 128, 0, 128, 128, 128, 128, 128, 0, 0, 0, 0, 0, 252, 252, 252, 0, 0, 0, 0, 0, 0, 0, 0, 252, 252, 252, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 3, 3, 3, 3, 3, 255, 255, 254, 0, 0, 0, 255, 255, 255, 28, 28, 28, 28, 28, 28, 28, 28, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 127, 127, 127, 0, 0, 0, 0, 0, 127, 127, 127, 0, 0, 0, 127, 127, 127, 0, 0, 0, 0, 0, 0, 0, 0, 127, 127, 127, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-uint8_t _uH[160] = {0, 0, 0, 0, 0, 0, 0, 192, 192, 0, 0, 0, 0, 0, 0, 192, 192, 0, 0, 0, 252, 252, 252, 0, 0, 0, 0, 0, 0, 0, 0, 252, 252, 252, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 248, 255, 31, 3, 0, 0, 0, 128, 240, 255, 63, 1, 0, 0, 0, 255, 255, 255, 28, 28, 28, 28, 28, 28, 28, 28, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 254, 63, 15, 28, 28, 28, 28, 30, 15, 15, 31, 28, 24, 0, 0, 0, 127, 127, 127, 0, 0, 0, 0, 0, 0, 0, 0, 127, 127, 127, 0, 0, 0, 0, 0, 0, 0, 0, 15, 15, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-uint8_t _mH[160] = {0, 0, 0, 128, 128, 128, 0, 0, 128, 128, 128, 128, 0, 0, 0, 0, 128, 128, 128, 128, 0, 0, 0, 0, 0, 0, 252, 252, 252, 0, 0, 0, 0, 0, 0, 0, 0, 252, 252, 252, 0, 0, 0, 255, 255, 255, 3, 3, 3, 3, 3, 255, 255, 255, 7, 3, 3, 3, 3, 255, 255, 254, 0, 0, 0, 0, 255, 255, 255, 28, 28, 28, 28, 28, 28, 28, 28, 255, 255, 255, 0, 0, 0, 127, 127, 127, 0, 0, 0, 0, 0, 127, 127, 127, 0, 0, 0, 0, 0, 127, 127, 127, 0, 0, 0, 0, 127, 127, 127, 0, 0, 0, 0, 0, 0, 0, 0, 127, 127, 127, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-uint8_t _H[160] = {0, 0, 252, 252, 252, 0, 0, 0, 0, 0, 0, 0, 0, 252, 252, 252, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 28, 28, 28, 28, 28, 28, 28, 28, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 127, 127, 127, 0, 0, 0, 0, 0, 0, 0, 0, 127, 127, 127, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-void indicate1(int val){
+//unit: 0=nH, 1=uH, 2=mH, 3=H
+uint8_t unit[4][160] = {
+    {0, 0, 0, 128, 128, 128, 0, 128, 128, 128, 128, 128, 0, 0, 0, 0, 0, 252, 252, 252, 0, 0, 0, 0, 0, 0, 0, 0, 252, 252, 252, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 3, 3, 3, 3, 3, 255, 255, 254, 0, 0, 0, 255, 255, 255, 28, 28, 28, 28, 28, 28, 28, 28, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 127, 127, 127, 0, 0, 0, 0, 0, 127, 127, 127, 0, 0, 0, 127, 127, 127, 0, 0, 0, 0, 0, 0, 0, 0, 127, 127, 127, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 192, 192, 0, 0, 0, 0, 0, 0, 192, 192, 0, 0, 0, 252, 252, 252, 0, 0, 0, 0, 0, 0, 0, 0, 252, 252, 252, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 248, 255, 31, 3, 0, 0, 0, 128, 240, 255, 63, 1, 0, 0, 0, 255, 255, 255, 28, 28, 28, 28, 28, 28, 28, 28, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 254, 63, 15, 28, 28, 28, 28, 30, 15, 15, 31, 28, 24, 0, 0, 0, 127, 127, 127, 0, 0, 0, 0, 0, 0, 0, 0, 127, 127, 127, 0, 0, 0, 0, 0, 0, 0, 0, 15, 15, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 128, 128, 128, 0, 0, 128, 128, 128, 128, 0, 0, 0, 0, 128, 128, 128, 128, 0, 0, 0, 0, 0, 0, 252, 252, 252, 0, 0, 0, 0, 0, 0, 0, 0, 252, 252, 252, 0, 0, 0, 255, 255, 255, 3, 3, 3, 3, 3, 255, 255, 255, 7, 3, 3, 3, 3, 255, 255, 254, 0, 0, 0, 0, 255, 255, 255, 28, 28, 28, 28, 28, 28, 28, 28, 255, 255, 255, 0, 0, 0, 127, 127, 127, 0, 0, 0, 0, 0, 127, 127, 127, 0, 0, 0, 0, 0, 127, 127, 127, 0, 0, 0, 0, 127, 127, 127, 0, 0, 0, 0, 0, 0, 0, 0, 127, 127, 127, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 252, 252, 252, 0, 0, 0, 0, 0, 0, 0, 0, 252, 252, 252, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 28, 28, 28, 28, 28, 28, 28, 28, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 127, 127, 127, 0, 0, 0, 0, 0, 0, 0, 0, 127, 127, 127, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+};
+uint8_t dot[8]={0,0,60,60,60,60,0,0};
+void icf(int val){
     for(int page = 0; page<4; page++){
         PORTD.OUTCLR = PIN7_bm;
         PORTC.OUTCLR = PIN0_bm;
-        SPI0.DATA = 177 + page;
+        SPI0.DATA = 0xB1 + page;
         while (!(SPI0.INTFLAGS & SPI_IF_bm));
 
-        SPI0.DATA = 0b00010001;
+        SPI0.DATA = 16 + ((column >> 4) & 0x0F);
         while (!(SPI0.INTFLAGS & SPI_IF_bm));
-        SPI0.DATA = 0b00001000;
+        SPI0.DATA = column & 0x0F;
         while (!(SPI0.INTFLAGS & SPI_IF_bm));
 
         PORTC.OUTSET = PIN0_bm;
@@ -89,17 +92,18 @@ void indicate1(int val){
         }
         PORTD.OUTSET = PIN7_bm;
     }
+    column += 20;
 }
-void indicate2(int val){
+void icf_end(int val){
     for(int page = 0; page<4; page++){
         PORTD.OUTCLR = PIN7_bm;
         PORTC.OUTCLR = PIN0_bm;
         SPI0.DATA = 177 + page;
         while (!(SPI0.INTFLAGS & SPI_IF_bm));
 
-        SPI0.DATA = 0b00010010;
+        SPI0.DATA = 16 + ((column >> 4) & 0x0F);
         while (!(SPI0.INTFLAGS & SPI_IF_bm));
-        SPI0.DATA = 0b00001100;
+        SPI0.DATA = column & 0x0F;
         while (!(SPI0.INTFLAGS & SPI_IF_bm));
 
         PORTC.OUTSET = PIN0_bm;
@@ -109,62 +113,42 @@ void indicate2(int val){
         }
         PORTD.OUTSET = PIN7_bm;
     }
+    column = 0;
 }
-void indicate3(int val){
-    for(int page = 0; page<4; page++){
-        PORTD.OUTCLR = PIN7_bm;
-        PORTC.OUTCLR = PIN0_bm;
-        SPI0.DATA = 177 + page;
-        while (!(SPI0.INTFLAGS & SPI_IF_bm));
+void icdot(void){
+    PORTD.OUTCLR = PIN7_bm;
+    PORTC.OUTCLR = PIN0_bm;
+    SPI0.DATA = 0xB4;
+    while (!(SPI0.INTFLAGS & SPI_IF_bm));
 
-        SPI0.DATA = 0b00010100;
-        while (!(SPI0.INTFLAGS & SPI_IF_bm));
-        SPI0.DATA = 0b00000000;
-        while (!(SPI0.INTFLAGS & SPI_IF_bm));
+    SPI0.DATA = 16 + ((column >> 4) & 0x0F);
+    while (!(SPI0.INTFLAGS & SPI_IF_bm));
+    SPI0.DATA = column & 0x0F;
+    while (!(SPI0.INTFLAGS & SPI_IF_bm));
 
-        PORTC.OUTSET = PIN0_bm;
-        for (int col = 0; col < 20; col++){
-            SPI0.DATA = figure[val][col + page*20];
-            while (!(SPI0.INTFLAGS & SPI_IF_bm));
-        }
-        PORTD.OUTSET = PIN7_bm;
+    PORTC.OUTSET = PIN0_bm;
+    for (int col = 0; col < 8; col++){
+        SPI0.DATA = dot[col];
+        while (!(SPI0.INTFLAGS & SPI_IF_bm));
     }
+    PORTD.OUTSET = PIN7_bm;
+    column += 8;
 }
-void indicate4(int val){
+void pressUnit(int val){
     for(int page = 0; page<4; page++){
         PORTD.OUTCLR = PIN7_bm;
-        PORTC.OUTCLR = PIN0_bm;
-        SPI0.DATA = 177 + page;
-        while (!(SPI0.INTFLAGS & SPI_IF_bm));
 
-        SPI0.DATA = 0b00010101;
-        while (!(SPI0.INTFLAGS & SPI_IF_bm));
-        SPI0.DATA = 0b00000100;
-        while (!(SPI0.INTFLAGS & SPI_IF_bm));
-
-        PORTC.OUTSET = PIN0_bm;
-        for (int col = 0; col < 20; col++){
-            SPI0.DATA = figure[val][col + page*20];
-            while (!(SPI0.INTFLAGS & SPI_IF_bm));
-        }
-        PORTD.OUTSET = PIN7_bm;
-    }
-}
-void pressUnit(void){
-    for(int page = 0; page<4; page++){
-        PORTD.OUTCLR = PIN7_bm;
         PORTC.OUTCLR = PIN0_bm;
         SPI0.DATA = 0xB2 + page;
         while (!(SPI0.INTFLAGS & SPI_IF_bm));
-
         SPI0.DATA = 0b00010101;
         while (!(SPI0.INTFLAGS & SPI_IF_bm));
-        SPI0.DATA = 0b00000100;
+        SPI0.DATA = 0b00001000;
         while (!(SPI0.INTFLAGS & SPI_IF_bm));
-
         PORTC.OUTSET = PIN0_bm;
+
         for (int col = 0; col < 40; col++){
-            SPI0.DATA = _H[col + page*40];
+            SPI0.DATA = unit[val][col + page*40];
             while (!(SPI0.INTFLAGS & SPI_IF_bm));
         }
         PORTD.OUTSET = PIN7_bm;
@@ -248,66 +232,35 @@ int main(void){
     // 6. 画面を全消去
     for (uint8_t page = 0; page < 6; page++){
         PORTD.OUTCLR = PIN7_bm;
+
         PORTC.OUTCLR = PIN0_bm;
-
-        SPI0.DATA = 0xB0 | page;
+        SPI0.DATA = 0xB0 + page;
         while (!(SPI0.INTFLAGS & SPI_IF_bm));
-
         SPI0.DATA = 0x10;
         while (!(SPI0.INTFLAGS & SPI_IF_bm));
-
         SPI0.DATA = 0x00;
         while (!(SPI0.INTFLAGS & SPI_IF_bm));
-
         PORTC.OUTSET = PIN0_bm;
 
-        for (uint8_t col = 0; col < 128; col++)
-        {
+        for (uint8_t col = 0; col < 128; col++){
             SPI0.DATA = 0x00;
             while (!(SPI0.INTFLAGS & SPI_IF_bm));
         }
-
         PORTD.OUTSET = PIN7_bm;
     }
-
-/*
-    PORTD.OUTCLR = PIN7_bm;
-    PORTC.OUTCLR = PIN0_bm;
-
-
-    SPI0.DATA = 0xB1;
-    while (!(SPI0.INTFLAGS & SPI_IF_bm));
-
-
-    SPI0.DATA = 0x10;
-    while (!(SPI0.INTFLAGS & SPI_IF_bm));
-
-    SPI0.DATA = 0x00;
-    while (!(SPI0.INTFLAGS & SPI_IF_bm));
-
-
-    PORTC.OUTSET = PIN0_bm;
-
-    for (uint8_t col = 0; col < 23; col++)
-    {
-        SPI0.DATA = _H[0][col];
-        while (!(SPI0.INTFLAGS & SPI_IF_bm));
-    }
-
-    PORTD.OUTSET = PIN7_bm;
-    */
     
-    indicate1(2);
-    indicate2(3);
-    indicate3(1);
+    icf(1);
+    icf_end(1);
+    pressUnit(2);
     int innr = 0;
 
     while (1){
         innr +=7;
-        indicate1(innr/1000);
-        indicate2((innr/100)%10);
-        indicate3((innr/10)%10);
-        pressUnit();
+        icf(1);
+        icf(0);
+        icf(6);
+        icdot();
+        icf_end(3);
         _delay_ms(200);
     }
 }
