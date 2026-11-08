@@ -1,7 +1,11 @@
 #define F_CPU 20000000UL
 #include <avr/io.h>
+#include <avr/interrupt.h>
 #include <util/delay.h>
 int column = 0;
+uint32_t cnt_est = 0;
+uint32_t cnt_cur = 0;
+uint32_t cnt_pre = 0;
 
 uint8_t figure[10][80] = {
     {
@@ -73,6 +77,7 @@ uint8_t unit[4][160] = {
     {0, 0, 252, 252, 252, 0, 0, 0, 0, 0, 0, 0, 0, 252, 252, 252, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 28, 28, 28, 28, 28, 28, 28, 28, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 127, 127, 127, 0, 0, 0, 0, 0, 0, 0, 0, 127, 127, 127, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 };
 uint8_t dot[8]={0,0,60,60,60,60,0,0};
+
 void icf(int val){
     for(int page = 0; page<4; page++){
         PORTD.OUTCLR = PIN7_bm;
@@ -134,7 +139,7 @@ void icdot(void){
     PORTD.OUTSET = PIN7_bm;
     column += 8;
 }
-void pressUnit(int val){
+void icUnit(int val){
     for(int page = 0; page<4; page++){
         PORTD.OUTCLR = PIN7_bm;
 
@@ -154,85 +159,50 @@ void pressUnit(int val){
         PORTD.OUTSET = PIN7_bm;
     }
 }
-
-int main(void){
-    _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, 0x00);
-    PORTMUX.SPIROUTEA = PORTMUX_SPI0_ALT4_gc;
-    PORTD.DIRSET = PIN4_bm | PIN6_bm | PIN7_bm; // PD4=MOSI, PD6=SCK, PD7=CS
-    PORTC.DIRSET = PIN0_bm | PIN1_bm; //PC0=RS, PC1=RESET
-    PORTD.OUTSET = PIN7_bm;
-    PORTC.OUTSET = PIN1_bm;
-
+void init_LCD(void){
     SPI0.CTRLB = SPI_MODE_3_gc;
     SPI0.CTRLA = SPI_ENABLE_bm | SPI_MASTER_bm | SPI_PRESC_DIV4_gc | SPI_CLK2X_bm;
 
-    //LCDリセット
     PORTC.OUTCLR = PIN1_bm;
     _delay_ms(10);
     PORTC.OUTSET = PIN1_bm;
     _delay_ms(10);
 
-    //初期化
     PORTD.OUTCLR = PIN7_bm;
     PORTC.OUTCLR = PIN0_bm;
-
-    // Display OFF
     SPI0.DATA = 0xAE;
     while (!(SPI0.INTFLAGS & SPI_IF_bm));
-
-    // ADC select
     SPI0.DATA = 0xA0;
     while (!(SPI0.INTFLAGS & SPI_IF_bm));
-
-    // COM scan direction
     SPI0.DATA = 0xC8;
     while (!(SPI0.INTFLAGS & SPI_IF_bm));
-
-    // Bias
     SPI0.DATA = 0xA3;
     while (!(SPI0.INTFLAGS & SPI_IF_bm));
-
-    // Power control
     SPI0.DATA = 0x2C;
     while (!(SPI0.INTFLAGS & SPI_IF_bm));
     _delay_ms(2);
-
     SPI0.DATA = 0x2E;
     while (!(SPI0.INTFLAGS & SPI_IF_bm));
     _delay_ms(2);
-
     SPI0.DATA = 0x2F;
     while (!(SPI0.INTFLAGS & SPI_IF_bm));
-
-    // Resistor ratio
     SPI0.DATA = 0x23;
     while (!(SPI0.INTFLAGS & SPI_IF_bm));
-
-    // Electronic volume
     SPI0.DATA = 0x81;
     while (!(SPI0.INTFLAGS & SPI_IF_bm));
-
     SPI0.DATA = 0x1C;
     while (!(SPI0.INTFLAGS & SPI_IF_bm));
-
-    // Display normal
     SPI0.DATA = 0xA4;
     while (!(SPI0.INTFLAGS & SPI_IF_bm));
-
-    // Start line
     SPI0.DATA = 0x40;
     while (!(SPI0.INTFLAGS & SPI_IF_bm));
-
-    // Display ON
     SPI0.DATA = 0xAF;
     while (!(SPI0.INTFLAGS & SPI_IF_bm));
-
+    PORTC.OUTSET = PIN0_bm;
     PORTD.OUTSET = PIN7_bm;
 
-    // 6. 画面を全消去
     for (uint8_t page = 0; page < 6; page++){
         PORTD.OUTCLR = PIN7_bm;
-
         PORTC.OUTCLR = PIN0_bm;
         SPI0.DATA = 0xB0 + page;
         while (!(SPI0.INTFLAGS & SPI_IF_bm));
@@ -241,26 +211,85 @@ int main(void){
         SPI0.DATA = 0x00;
         while (!(SPI0.INTFLAGS & SPI_IF_bm));
         PORTC.OUTSET = PIN0_bm;
-
         for (uint8_t col = 0; col < 128; col++){
             SPI0.DATA = 0x00;
             while (!(SPI0.INTFLAGS & SPI_IF_bm));
         }
         PORTD.OUTSET = PIN7_bm;
     }
+}
+void init_EVS(void){
+    EVSYS.CHANNEL0 = EVSYS_CHANNEL_PORTA_EV0_gc;
+    EVSYS.USERTCB0COUNT = EVSYS_USER_CHANNEL0_gc;
+    EVSYS.CHANNEL1 = EVSYS_CHANNEL_TCB0_OVF_gc;
+    EVSYS.USERTCB1COUNT = EVSYS_USER_CHANNEL1_gc;
+    EVSYS.CHANNEL2 = 0;
+    EVSYS.USERTCB0CAPT = EVSYS_USER_CHANNEL2_gc;
+    EVSYS.USERTCB1CAPT = EVSYS_USER_CHANNEL2_gc;
+}
+void init_TCB(void){
+    TCB0.CTRLB = 0b01000011;
+    TCB1.CTRLB = 0b01000011;
+    TCB0.EVCTRL = TCB_CAPTEI_bm;
+    TCB1.EVCTRL = TCB_CAPTEI_bm;
+    TCB0.CNT = 0;
+    TCB1.CNT = 0;
+    TCB1.CTRLA = TCB_CASCADE_bm | TCB_CLKSEL_EVENT_gc | TCB_ENABLE_bm;
+    TCB0.CTRLA = TCB_CLKSEL_EVENT_gc | TCB_ENABLE_bm;
+}
+void init_RTC(void){
+    RTC.PITINTCTRL = RTC_PI_bm;
+    RTC.PITCTRLA = RTC_PERIOD_CYC8192_gc | RTC_PITEN_bm;
+}
+void init_AC(void){
+    AC0.MUXCTRL = AC_MUXPOS_AINP4_gc | AC_MUXNEG_AINN3_gc;
+    AC0.CTRLA = AC_ENABLE_bm | AC_HYSMODE_1_bm;
+}
+void init_CCL(void){}
+
+ISR(RTC_PIT_vect){
+    TCB0.INTFLAGS = TCB_CAPT_bm;
+    TCB1.INTFLAGS = TCB_CAPT_bm;
+    EVSYS.SWEVENTA = PIN2_bm;
+    while (!(TCB0.INTFLAGS & TCB_CAPT_bm));
+    while (!(TCB1.INTFLAGS & TCB_CAPT_bm));
+    cnt_cur = ((uint32_t)TCB1.CCMP << 16) | (uint32_t)TCB0.CCMP;
+    cnt_est = cnt_cur - cnt_pre;
+    cnt_pre = cnt_cur;
+    icf((cnt_cur*4/1000)%10);
+    icf((cnt_cur*4/100)%10);
+    icf((cnt_cur*4/10)%10);
+    icf_end(cnt_cur*4%10);
+    RTC.PITINTFLAGS = RTC_PI_bm;
+}
+
+int main(void){
+    _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, 0x00);
+    PORTMUX.SPIROUTEA = PORTMUX_SPI0_ALT4_gc;
+    PORTD.DIRSET = PIN4_bm | PIN6_bm | PIN7_bm; // PD4=SDA, PD6=SCL, PD7=CS
+    PORTC.DIRSET = PIN0_bm | PIN1_bm; //PC0=RS, PC1=RESET
+    PORTD.OUTSET = PIN7_bm;
+    PORTC.OUTSET = PIN1_bm;
+
+    PORTA.PIN1CTRL = PORT_ISC_INTDISABLE_gc;
+    PORTA.EVGENCTRLA = PORT_EVGEN0SEL_PIN1_gc;
+
+    init_EVS();
+    init_TCB();
+    init_RTC();
+    init_AC();
+    init_LCD();
     
     icf(1);
     icf_end(1);
-    pressUnit(2);
-    int innr = 0;
+    icUnit(2);
+    sei();
 
     while (1){
-        innr +=7;
-        icf(1);
-        icf(0);
-        icf(6);
-        icdot();
-        icf_end(3);
-        _delay_ms(200);
+        //icf(cnt_cur);
+        //icf(2);
+        //icdot();
+        //icf(2);
+        //icf_end(4);
     }
 }
