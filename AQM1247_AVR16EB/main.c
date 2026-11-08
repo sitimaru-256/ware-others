@@ -242,10 +242,15 @@ void init_RTC(void){
     RTC.PITCTRLA = RTC_PERIOD_CYC8192_gc | RTC_PITEN_bm;
 }
 void init_AC(void){
-    AC0.MUXCTRL = AC_MUXPOS_AINP4_gc | AC_MUXNEG_AINN3_gc;
+    AC0.MUXCTRL = AC_MUXPOS_AINP6_gc | AC_MUXNEG_AINN3_gc;
     AC0.CTRLA = AC_ENABLE_bm | AC_HYSMODE_1_bm;
 }
-void init_CCL(void){}
+void init_CCL(void){
+    CCL.LUT1CTRLB = CCL_INSEL0_AC0_gc;
+    CCL.TRUTH1 = 0xAA;
+    CCL.LUT1CTRLA = CCL_ENABLE_bm | CCL_OUTEN_bm | CCL_FILTSEL_DISABLE_gc;
+    CCL.CTRLA = CCL_ENABLE_bm;
+}
 
 ISR(RTC_PIT_vect){
     TCB0.INTFLAGS = TCB_CAPT_bm;
@@ -256,10 +261,10 @@ ISR(RTC_PIT_vect){
     cnt_cur = ((uint32_t)TCB1.CCMP << 16) | (uint32_t)TCB0.CCMP;
     cnt_est = cnt_cur - cnt_pre;
     cnt_pre = cnt_cur;
-    icf((cnt_cur*4/1000)%10);
-    icf((cnt_cur*4/100)%10);
-    icf((cnt_cur*4/10)%10);
-    icf_end(cnt_cur*4%10);
+    icf((cnt_cur*4/1000000)%10);
+    icf((cnt_cur*4/100000)%10);
+    icf((cnt_cur*4/10000)%10);
+    icf_end(cnt_cur*4/1000%10);
     RTC.PITINTFLAGS = RTC_PI_bm;
 }
 
@@ -271,13 +276,21 @@ int main(void){
     PORTD.OUTSET = PIN7_bm;
     PORTC.OUTSET = PIN1_bm;
 
+    PORTA.DIRCLR = PIN1_bm;
     PORTA.PIN1CTRL = PORT_ISC_INTDISABLE_gc;
     PORTA.EVGENCTRLA = PORT_EVGEN0SEL_PIN1_gc;
+
+    PORTC.DIRCLR = PIN2_bm; // PC2=in-
+    PORTD.DIRCLR = PIN5_bm; // PD5=in+
+    PORTC.DIRSET = PIN3_bm; // PC3=Vcomp
+    PORTC.PIN2CTRL = PORT_ISC_INPUT_DISABLE_gc;
+    PORTD.PIN5CTRL = PORT_ISC_INPUT_DISABLE_gc;
 
     init_EVS();
     init_TCB();
     init_RTC();
     init_AC();
+    init_CCL();
     init_LCD();
     
     icf(1);
