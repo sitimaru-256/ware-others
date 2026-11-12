@@ -223,13 +223,13 @@ void init_EVS(void){
     EVSYS.USERTCB0COUNT = EVSYS_USER_CHANNEL0_gc;
     EVSYS.CHANNEL1 = EVSYS_CHANNEL_TCB0_OVF_gc;
     EVSYS.USERTCB1COUNT = EVSYS_USER_CHANNEL1_gc;
-    EVSYS.CHANNEL2 = 0;
+    EVSYS.CHANNEL2 = EVSYS_CHANNEL_RTC_OVF_gc;
     EVSYS.USERTCB0CAPT = EVSYS_USER_CHANNEL2_gc;
     EVSYS.USERTCB1CAPT = EVSYS_USER_CHANNEL2_gc;
 }
 void init_TCB(void){
-    TCB0.CTRLB = 0b01000011;
-    TCB1.CTRLB = 0b01000011;
+    TCB0.CTRLB = TCB_ASYNC_bm | TCB_CNTMODE_1_bm | TCB_CNTMODE_0_bm;
+    TCB1.CTRLB = TCB_ASYNC_bm | TCB_CNTMODE_1_bm | TCB_CNTMODE_0_bm;
     TCB0.EVCTRL = TCB_CAPTEI_bm;
     TCB1.EVCTRL = TCB_CAPTEI_bm;
     TCB0.CNT = 0;
@@ -238,12 +238,13 @@ void init_TCB(void){
     TCB0.CTRLA = TCB_CLKSEL_EVENT_gc | TCB_ENABLE_bm;
 }
 void init_RTC(void){
-    RTC.PITINTCTRL = RTC_PI_bm;
-    RTC.PITCTRLA = RTC_PERIOD_CYC8192_gc | RTC_PITEN_bm;
+    RTC.PER = 0x1FFF;
+    RTC.INTCTRL = RTC_OVF_bm;
+    RTC.CTRLA = RTC_RTCEN_bm;
 }
 void init_AC(void){
     AC0.MUXCTRL = AC_MUXPOS_AINP6_gc | AC_MUXNEG_AINN3_gc;
-    AC0.CTRLA = AC_ENABLE_bm | AC_HYSMODE_1_bm;
+    AC0.CTRLA = AC_HYSMODE_gm | AC_ENABLE_bm;
 }
 void init_CCL(void){
     CCL.LUT1CTRLB = CCL_INSEL0_AC0_gc;
@@ -252,20 +253,14 @@ void init_CCL(void){
     CCL.CTRLA = CCL_ENABLE_bm;
 }
 
-ISR(RTC_PIT_vect){
-    TCB0.INTFLAGS = TCB_CAPT_bm;
-    TCB1.INTFLAGS = TCB_CAPT_bm;
-    EVSYS.SWEVENTA = PIN2_bm;
-    while (!(TCB0.INTFLAGS & TCB_CAPT_bm));
-    while (!(TCB1.INTFLAGS & TCB_CAPT_bm));
+ISR(RTC_CNT_vect){
+    RTC.INTFLAGS = RTC_OVF_bm;
     cnt_cur = ((uint32_t)TCB1.CCMP << 16) | (uint32_t)TCB0.CCMP;
-    cnt_est = cnt_cur - cnt_pre;
-    cnt_pre = cnt_cur;
-    icf((cnt_cur*4/1000000)%10);
-    icf((cnt_cur*4/100000)%10);
     icf((cnt_cur*4/10000)%10);
-    icf_end(cnt_cur*4/1000%10);
-    RTC.PITINTFLAGS = RTC_PI_bm;
+    icf((cnt_cur*4/1000)%10);
+    icf((cnt_cur*4/100)%10);
+    icf((cnt_cur*4/10)%10);
+    icf_end(cnt_cur*4%10);
 }
 
 int main(void){
@@ -293,16 +288,13 @@ int main(void){
     init_CCL();
     init_LCD();
     
-    icf(1);
-    icf_end(1);
-    icUnit(2);
     sei();
 
     while (1){
-        //icf(cnt_cur);
-        //icf(2);
-        //icdot();
-        //icf(2);
-        //icf_end(4);
+        //icf((cnt_cur*4/10000000)%10);
+    //icf((cnt_cur*4/1000000)%10);
+    //icf((cnt_cur*4/100000)%10);
+    //icf((cnt_cur*4/10000)%10);
+    //icf_end(cnt_cur*4/1000%10);
     }
 }
