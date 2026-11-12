@@ -13,15 +13,10 @@ def png_to_hex(filename):
             for y in range(atai*8, atai*8+8):
                 if y < height:
                     r, g, b, a = img.getpixel((x, y))
-
-                    # 完全な黒色のみ1
                     if (r, g, b) == (0, 0, 0):
                         value |= 1 << (y%8)
             result.append(value)
     return result
 
-
-# 使用例
 data = png_to_hex("font_width.png")
-
 print(", ".join(str(v) for v in data))
