@@ -2,10 +2,12 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
+#define ctN 1000000000 // 10^9
+#define pi4s 39.478418 // 4*PI*PI
+#define C_n 1.008
 int column = 0;
-uint32_t cnt_est = 0;
+uint32_t L_est = 0;
 uint32_t cnt_cur = 0;
-uint32_t cnt_pre = 0;
 
 uint8_t figure[10][80] = {
     {
@@ -121,6 +123,24 @@ void icf_end(int val){
     column = 0;
 }
 void icdot(void){
+    for(int page = 0; page<3; page++){
+        PORTD.OUTCLR = PIN7_bm;
+        PORTC.OUTCLR = PIN0_bm;
+        SPI0.DATA = 177 + page;
+        while (!(SPI0.INTFLAGS & SPI_IF_bm));
+
+        SPI0.DATA = 16 + ((column >> 4) & 0x0F);
+        while (!(SPI0.INTFLAGS & SPI_IF_bm));
+        SPI0.DATA = column & 0x0F;
+        while (!(SPI0.INTFLAGS & SPI_IF_bm));
+
+        PORTC.OUTSET = PIN0_bm;
+        for (int col = 0; col < 8; col++){
+            SPI0.DATA = 0x0;
+            while (!(SPI0.INTFLAGS & SPI_IF_bm));
+        }
+        PORTD.OUTSET = PIN7_bm;
+    }
     PORTD.OUTCLR = PIN7_bm;
     PORTC.OUTCLR = PIN0_bm;
     SPI0.DATA = 0xB4;
@@ -138,6 +158,27 @@ void icdot(void){
     }
     PORTD.OUTSET = PIN7_bm;
     column += 8;
+}
+void icdotend(void){
+    for(int page = 0; page<4; page++){
+        PORTD.OUTCLR = PIN7_bm;
+        PORTC.OUTCLR = PIN0_bm;
+        SPI0.DATA = 177 + page;
+        while (!(SPI0.INTFLAGS & SPI_IF_bm));
+
+        SPI0.DATA = 16 + ((column >> 4) & 0x0F);
+        while (!(SPI0.INTFLAGS & SPI_IF_bm));
+        SPI0.DATA = column & 0x0F;
+        while (!(SPI0.INTFLAGS & SPI_IF_bm));
+
+        PORTC.OUTSET = PIN0_bm;
+        for (int col = 0; col < 8; col++){
+            SPI0.DATA = 0;
+            while (!(SPI0.INTFLAGS & SPI_IF_bm));
+        }
+        PORTD.OUTSET = PIN7_bm;
+    }
+    column = 0;
 }
 void icUnit(int val){
     for(int page = 0; page<4; page++){
@@ -208,11 +249,11 @@ void init_LCD(void){
         while (!(SPI0.INTFLAGS & SPI_IF_bm));
         SPI0.DATA = 0x10;
         while (!(SPI0.INTFLAGS & SPI_IF_bm));
-        SPI0.DATA = 0x00;
+        SPI0.DATA = 0x0;
         while (!(SPI0.INTFLAGS & SPI_IF_bm));
         PORTC.OUTSET = PIN0_bm;
         for (uint8_t col = 0; col < 128; col++){
-            SPI0.DATA = 0x00;
+            SPI0.DATA = 0x0;
             while (!(SPI0.INTFLAGS & SPI_IF_bm));
         }
         PORTD.OUTSET = PIN7_bm;
@@ -238,7 +279,7 @@ void init_TCB(void){
     TCB0.CTRLA = TCB_CLKSEL_EVENT_gc | TCB_ENABLE_bm;
 }
 void init_RTC(void){
-    RTC.PER = 0x1FFF;
+    RTC.PER = 0x2043; //ideal=0x1FFF
     RTC.INTCTRL = RTC_OVF_bm;
     RTC.CTRLA = RTC_RTCEN_bm;
 }
@@ -255,12 +296,103 @@ void init_CCL(void){
 
 ISR(RTC_CNT_vect){
     RTC.INTFLAGS = RTC_OVF_bm;
-    cnt_cur = ((uint32_t)TCB1.CCMP << 16) | (uint32_t)TCB0.CCMP;
-    icf((cnt_cur*4/10000)%10);
-    icf((cnt_cur*4/1000)%10);
-    icf((cnt_cur*4/100)%10);
-    icf((cnt_cur*4/10)%10);
-    icf_end(cnt_cur*4%10);
+    cnt_cur = (((uint32_t)TCB1.CCMP << 16) | (uint32_t)TCB0.CCMP)*4;
+    if(ctN/(pi4s*C_n*cnt_cur*cnt_cur)>1){
+        L_est = (uint32_t)(ctN/(pi4s*C_n*cnt_cur*cnt_cur)*1000);
+        if(L_est > 1000000){
+            icf((L_est/1000000)%10);
+            icf((L_est/100000)%10);
+            icf((L_est/10000)%10);
+            icf((L_est/1000)%10);
+            icdotend();
+        }
+        else if(L_est > 100000){
+            icf((L_est/100000)%10);
+            icf((L_est/10000)%10);
+            icf((L_est/1000)%10);
+            icdot();
+            icf_end((L_est/100)%10);
+        }
+        else if(L_est > 10000){
+            icf((L_est/10000)%10);
+            icf((L_est/1000)%10);
+            icdot();
+            icf((L_est/100)%10);
+            icf_end((L_est/10)%10);
+        }
+        else{
+            icf((L_est/1000)%10);
+            icdot();
+            icf((L_est/100)%10);
+            icf((L_est/10)%10);
+            icf_end((L_est)%10);
+        }
+        icUnit(3);
+    }
+    else if(ctN/(pi4s*C_n*cnt_cur*cnt_cur)*1000>1){
+        L_est = (uint32_t)(ctN/(pi4s*C_n*cnt_cur*cnt_cur)*1000000);
+        if(L_est > 1000000){
+            icf((L_est/1000000)%10);
+            icf((L_est/100000)%10);
+            icf((L_est/10000)%10);
+            icf((L_est/1000)%10);
+            icdotend();
+        }
+        else if(L_est > 100000){
+            icf((L_est/100000)%10);
+            icf((L_est/10000)%10);
+            icf((L_est/1000)%10);
+            icdot();
+            icf_end((L_est/100)%10);
+        }
+        else if(L_est > 10000){
+            icf((L_est/10000)%10);
+            icf((L_est/1000)%10);
+            icdot();
+            icf((L_est/100)%10);
+            icf_end((L_est/10)%10);
+        }
+        else{
+            icf((L_est/1000)%10);
+            icdot();
+            icf((L_est/100)%10);
+            icf((L_est/10)%10);
+            icf_end((L_est)%10);
+        }
+        icUnit(2);
+    }
+    else if(ctN/(pi4s*C_n*cnt_cur*cnt_cur/1000000)>1){
+        L_est = (uint32_t)(ctN/(pi4s*C_n*cnt_cur*cnt_cur/1000000000));
+        if(L_est > 1000000){
+            icf((L_est/1000000)%10);
+            icf((L_est/100000)%10);
+            icf((L_est/10000)%10);
+            icf((L_est/1000)%10);
+            icdotend();
+        }
+        else if(L_est > 100000){
+            icf((L_est/100000)%10);
+            icf((L_est/10000)%10);
+            icf((L_est/1000)%10);
+            icdot();
+            icf_end((L_est/100)%10);
+        }
+        else if(L_est > 10000){
+            icf((L_est/10000)%10);
+            icf((L_est/1000)%10);
+            icdot();
+            icf((L_est/100)%10);
+            icf_end((L_est/10)%10);
+        }
+        else{
+            icf((L_est/1000)%10);
+            icdot();
+            icf((L_est/100)%10);
+            icf((L_est/10)%10);
+            icf_end((L_est)%10);
+        }
+        icUnit(1);
+    }
 }
 
 int main(void){
@@ -290,11 +422,5 @@ int main(void){
     
     sei();
 
-    while (1){
-        //icf((cnt_cur*4/10000000)%10);
-    //icf((cnt_cur*4/1000000)%10);
-    //icf((cnt_cur*4/100000)%10);
-    //icf((cnt_cur*4/10000)%10);
-    //icf_end(cnt_cur*4/1000%10);
-    }
+    while (1){}
 }
