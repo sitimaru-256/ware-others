@@ -3,8 +3,8 @@
 #include <avr/interrupt.h>
 #include <util/delay.h>
 #define ctN 1000000000 // 10^9
-#define pi4s 39.478418 // 4*PI*PI
-#define C_n 1.008
+#define pi4s 39.478418 // (2*PI)^2
+#define C_n 1.01 // Calibrated Capacitor Value
 int column = 0;
 uint32_t L_est = 0;
 uint32_t cnt_cur = 0;
@@ -285,7 +285,7 @@ void init_RTC(void){
 }
 void init_AC(void){
     AC0.MUXCTRL = AC_MUXPOS_AINP6_gc | AC_MUXNEG_AINN3_gc;
-    AC0.CTRLA = AC_HYSMODE_gm | AC_ENABLE_bm;
+    AC0.CTRLA = AC_HYSMODE_LARGE_gc | AC_POWER_PROFILE0_gc | AC_ENABLE_bm;
 }
 void init_CCL(void){
     CCL.LUT1CTRLB = CCL_INSEL0_AC0_gc;
@@ -296,8 +296,18 @@ void init_CCL(void){
 
 ISR(RTC_CNT_vect){
     RTC.INTFLAGS = RTC_OVF_bm;
+    TCB0.CNT = 0;
+    TCB1.CNT = 0;
     cnt_cur = (((uint32_t)TCB1.CCMP << 16) | (uint32_t)TCB0.CCMP)*4;
-    if(ctN/(pi4s*C_n*cnt_cur*cnt_cur)>1){
+    if(ctN/(pi4s*C_n*cnt_cur*cnt_cur)>1000){
+        icf(0);
+        icf(0);
+        icf(0);
+        icf(0);
+        icdotend();
+        icUnit(3);
+    }
+    else if(ctN/(pi4s*C_n*cnt_cur*cnt_cur)>1){
         L_est = (uint32_t)(ctN/(pi4s*C_n*cnt_cur*cnt_cur)*1000);
         if(L_est > 1000000){
             icf((L_est/1000000)%10);
@@ -330,15 +340,8 @@ ISR(RTC_CNT_vect){
         icUnit(3);
     }
     else if(ctN/(pi4s*C_n*cnt_cur*cnt_cur)*1000>1){
-        L_est = (uint32_t)(ctN/(pi4s*C_n*cnt_cur*cnt_cur)*1000000);
-        if(L_est > 1000000){
-            icf((L_est/1000000)%10);
-            icf((L_est/100000)%10);
-            icf((L_est/10000)%10);
-            icf((L_est/1000)%10);
-            icdotend();
-        }
-        else if(L_est > 100000){
+        L_est = (uint32_t)(ctN/(pi4s*C_n*cnt_cur*cnt_cur/1000000));
+        if(L_est > 100000){
             icf((L_est/100000)%10);
             icf((L_est/10000)%10);
             icf((L_est/1000)%10);
@@ -363,14 +366,7 @@ ISR(RTC_CNT_vect){
     }
     else if(ctN/(pi4s*C_n*cnt_cur*cnt_cur/1000000)>1){
         L_est = (uint32_t)(ctN/(pi4s*C_n*cnt_cur*cnt_cur/1000000000));
-        if(L_est > 1000000){
-            icf((L_est/1000000)%10);
-            icf((L_est/100000)%10);
-            icf((L_est/10000)%10);
-            icf((L_est/1000)%10);
-            icdotend();
-        }
-        else if(L_est > 100000){
+        if(L_est > 100000){
             icf((L_est/100000)%10);
             icf((L_est/10000)%10);
             icf((L_est/1000)%10);
@@ -392,6 +388,31 @@ ISR(RTC_CNT_vect){
             icf_end((L_est)%10);
         }
         icUnit(1);
+    }
+    else if(ctN/(pi4s*C_n*cnt_cur*cnt_cur/1000000000)>1){
+        L_est = (uint32_t)(ctN/(pi4s*C_n*cnt_cur*cnt_cur/1000000/1000000));
+        if(L_est > 100000){
+            icf((L_est/100000)%10);
+            icf((L_est/10000)%10);
+            icf((L_est/1000)%10);
+            icdot();
+            icf_end((L_est/100)%10);
+        }
+        else if(L_est > 10000){
+            icf((L_est/10000)%10);
+            icf((L_est/1000)%10);
+            icdot();
+            icf((L_est/100)%10);
+            icf_end((L_est/10)%10);
+        }
+        else{
+            icf((L_est/1000)%10);
+            icdot();
+            icf((L_est/100)%10);
+            icf((L_est/10)%10);
+            icf_end((L_est)%10);
+        }
+        icUnit(0);
     }
 }
 
